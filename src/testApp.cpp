@@ -6,7 +6,14 @@
 //--------------------------------------------------------------
 void testApp::setup(){
 	
+	//global stuff
 	ofHideCursor();
+	ofEnableSmoothing();
+	ofSetVerticalSync(true);
+	ofEnableAlphaBlending();
+	ofSetFrameRate(60);
+	ofSetCircleResolution(128);
+	
 	//my colors from colourlovers.com
 	color1 = (33, 20, 38);
 	color2 = (65, 84, 59);
@@ -14,32 +21,29 @@ void testApp::setup(){
 	color4 = (155, 191, 171);
 	color5 = (242,239,223);
 	
+	//assingning colors
 	partColor = color1;
-
 	backColor = color5;
 	ofBackground(backColor);
 	
-	ofEnableSmoothing();
-	ofSetVerticalSync(true);
-	ofEnableAlphaBlending();
-	ofSetFrameRate(60);
-	
 	//set the number of particles
-	nParticles = 100;
+	nParticles = 3;
 	
 	//forces variables
 	windX = 0.0;
 	gX = 0;
 	gY = 0.03;
-	grav = true;
+	grav = false;
 	drag.set (0,0);
 	c = -0.005; //drag coeficient
 	
 	//array of pointers for the Particles
-	particles = new myParticle*[nParticles];
-	for (int i = 0; i < nParticles; i++) {
-		//differentiate
-		pos.set (ofRandom(ofGetWidth()-40),ofRandom(ofGetHeight()-40));
+	//particles = new myParticle*[nParticles];
+	particles.resize(nParticles);
+	//for (int i = 0; i < nParticles; i++) {
+	for (int i = 0; i < particles.size(); i++) {
+		//differentiate them
+		pos.set (ofRandom(ofGetWidth()-20),ofRandom(ofGetHeight()-20));
 		float mass = ofNoise(ofRandom(i));
 		
 		particles[i] = new myParticle(pos,mass);
@@ -50,67 +54,84 @@ void testApp::setup(){
 	strength = 50;
 	attractor = new myAttractor;
 	attract = false;
-	trails = false;
-	oneTrail = false;
 	
 	//trails
-	//rgbaFboFloat.allocate(400, 400, GL_RGBA32F_ARB);
+	trails = false;
+	trailsSpeed = false;
+	oneTrail = true;
+	
+	//myFbo.allocate(ofGetWidth, ofGetHeight, GL_RGBA32F_ARB);
 	// with alpha, 32 bits red, 32 bits green, 32 bits blue, 32 bits alpha, from 0 to 1 in 'infinite' steps
 	ofFbo::Settings s;
-	s.width			= ofGetScreenWidth();
-	s.height			= ofGetScreenHeight();
-	s.internalformat   = GL_RGBA;
-	s.useDepth			= true;
-	rgbaFboFloat.allocate(s);
-	rgbaFboFloat.begin();
+	s.width	= ofGetScreenWidth();
+	s.height = ofGetScreenHeight();
+	s.internalformat = GL_RGBA;
+	s.useDepth = true;
+	myFbo.allocate(s);
+	myFbo.begin();
 	ofClear(color5);	
-    rgbaFboFloat.end();
+    myFbo.end();
 	
+	//connections between particles
 	triangulator = new ofxDelaunay;
-
-	
+	triangulatorSpeed = new ofxDelaunay;
+		
 }
 
 //--------------------------------------------------------------
 void testApp::update(){
 	
-	//calculo de las particulas
-	//wind.set (windX,0);
-	wind.set (1,0);
+	//calculo de las particulas --------------
+	wind.set (windX,0);
 	gravity.set (gX,gY);
 	//cout << "gX: " << gX	 << endl;
 	//cout << "gY: " << gY	 << endl;
 	
 	triangulator->reset();
+	triangulatorSpeed->reset();
 	
-	for (int i = 0; i < nParticles; i++) {
-		//particles[i]->applyForce(wind);
-		if (grav) {
-			particles[i]->applyForce(gravity);
-		}
+	for (int i = 0; i < particles.size(); i++) {
+
 		drag.set(particles[i]->vel.getNormalized());//copy of the velocity vectors direction
 		float speed = particles[i]->vel.length();	//get the vectors length in order to:
 		drag.scale(c*speed);						//multiply it by coeficient
-		particles[i]->applyForce(drag);
-		ofVec2f attForce = attractor->attract(particles[i], strength);
-		particles[i]->applyForce(attForce);
+		particles[i]->applyForce(drag);				//to get the drag force
+		
+		//particles[i]->applyForce(wind);
+		if (grav) {
+			particles[i]->applyForce(gravity);		//apply gravity if selected
+		}
+		
+		ofVec2f attForce = attractor->attract(particles[i], strength);//calculate attractor
+		particles[i]->applyForce(attForce);			//apply attractor
+		//particles affected by Attractor range
+		/*if (particles[i]->isAffected(attract, 100)) {
+		 particles[i]->applyForce(wind);
+		 }*/
 		particles[i]->update();
 		
 		triangulator->addPoint(particles[i]->pos);
 		
-		if (particles[i]->isAffected(attract, 100)) {
-			//particles[i]->applyForce(wind);
+		//if the particle is faster enough, we add it to the particles buffer
+		if (particles[i]->isMoving(0.4)) {
+			particlesBuffer.push_back(new myParticle (particles[i]->pos,particles[i]->mass*2));
 		}
 		
+	}
+	
+	//update the particles in the buffer and add the points to the triangulation
+	for (int i = 0; i < particlesBuffer.size(); i++) {
+		particlesBuffer[i]->update(); //for edges purposes
+		triangulatorSpeed->addPoint(particles[i]->pos);
 	}
 	
 	attractor->update(ofPoint(ofGetMouseX(),ofGetMouseY()), attract);
 	
 	triangulator->triangulate();
-	
-	rgbaFboFloat.begin();
-	drawFboTest();
-	rgbaFboFloat.end();
+	//don't triangulate the buffer till there is a minimum of particles in there
+	if (particlesBuffer.size() >= 3) {
+		triangulatorSpeed->triangulate();
+	}
 
 }
 
@@ -118,16 +139,31 @@ void testApp::update(){
 void testApp::draw(){
 	
 	
-	ofBackground(backColor);
-	rgbaFboFloat.draw(0,0);
+	ofBackground(backColor); //for color modes
 	
-	for (int i = 0; i < nParticles; i++) {
+	//FBO drawing for the degradation effect on lines
+	myFbo.begin();
+	drawFbo();
+	myFbo.end();
+	myFbo.draw(0,0);
+	
+	//Draw methods for the particles
+	for (int i = 0; i < particles.size(); i++) {
 		particles[i]->display(partColor);
 	}
 	
-	attractor->display(ofNoise(ofRandom(40))*40, attractColor);
+	if (trailsSpeed) {
+		for (int i = 0; i < particlesBuffer.size(); i++) {
+			particlesBuffer[i]->display(ofColor(255, 255, 255, 255));
+		}
+	}
+	
+	//drawing the attractor with a random size
+	//attractor->display(ofNoise(ofRandom(40))*40, attractColor);
 	//attractor->display(ofRandom(40), attractColor);
-	//attractor->display(40, attractColor);
+	attractor->display(70, attractColor);
+	
+	particlesBuffer.clear();	//reset the buffer every frame
 
 }
 
@@ -162,6 +198,9 @@ void testApp::keyPressed(int key){
 			case '6':
 				strength = 100;
 				break;
+			case '7':
+				strength = 500;
+				break;
 			case 'o':
 				nParticles = 10;
 				break;
@@ -176,9 +215,22 @@ void testApp::keyPressed(int key){
 				break;
 			case 't':
 				trails = !trails;
+				oneTrail = false;
+				break;
+			case 'y':
+				trailsSpeed = !trailsSpeed;
+				oneTrail = false;
 				break;
 			case 'r':
 				oneTrail = !oneTrail;
+				break;
+			case 'm':
+				//Add a big particle
+				particles.push_back( new myParticle(ofPoint(ofGetWidth()/2,ofGetHeight()/2),4) );
+				break;
+			case 'n':
+				//Add new particles
+				particles.push_back( new myParticle(ofPoint(ofRandom(ofGetWidth()-40),ofRandom(ofGetHeight()-40)),ofRandom(0.5,1)) );
 				break;
 		}
 
@@ -201,7 +253,6 @@ void testApp::mouseDragged(int x, int y, int button){
 
 //--------------------------------------------------------------
 void testApp::mousePressed(int x, int y, int button){
-	//gravity.set(0.0);
 	attract = true;
 	attractColor = color3;
 
@@ -229,8 +280,8 @@ void testApp::dragEvent(ofDragInfo dragInfo){
 
 }
 
-void testApp::drawFboTest(){
-	//we clear the fbo if c is pressed. 
+void testApp::drawFbo(){
+	//we clear the fbo if v is pressed. 
 	//this completely clears the buffer so you won't see any trails
 	if( ofGetKeyPressed('v') ){
 		ofClear(backColor.r, backColor.g, backColor.b, 0);
@@ -247,22 +298,31 @@ void testApp::drawFboTest(){
 		fadeAmnt = 15;
 	}  
 	
-	//1 - Fade Fbo
+	//1 - Fade Fbo -------------------------------------------
 	
 	//this is where we fade the fbo
-	//by drawing a rectangle the size of the fbo with a small alpha value, we can slowly fade the current contents of the fbo. 
+	//by drawing a rectangle the size of the fbo with a small alpha value,
+	//we can slowly fade the current contents of the fbo. 
 	ofFill();
 	ofSetColor(ofColor(backColor.r, backColor.g, backColor.b, fadeAmnt));
 	ofRect(0,0,ofGetWidth(),ofGetHeight());
 	
-	//2 - Draw graphics
+	//2 - Draw graphics --------------------------------------
 	
-	ofNoFill();
 	ofSetColor(color5);
+	ofNoFill();
+	
+	//draw the mesh of triangles
 	if (trails) {
 		triangulator->draw();
 	}
 	
+	//draw the mesh of triangles for the particles in movement
+	if (trailsSpeed) {
+		triangulatorSpeed->draw();
+	}
+	
+	//connect the two first particles in the vector
 	if (oneTrail) {
 		ofLine(particles[0]->pos.x, particles[0]->pos.y, particles[1]->pos.x, particles[1]->pos.y);
 	}

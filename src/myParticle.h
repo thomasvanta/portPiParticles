@@ -1,6 +1,6 @@
 /*
  *  myParticle.h
- *  ofPortfolio
+ *  ofRaspPiPortfolio
  *
  *  Created by Thomas Van Ta on 12/04/13.
  *  Copyright 2013 __ThomasVanTa__. All rights reserved.
@@ -34,6 +34,7 @@ public:
 	void edges();
 	
 	bool isAffected(bool, int);
+	bool isMoving(float);
 	
 	//constructor
 	myParticle(ofVec2f, float);

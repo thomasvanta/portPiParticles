@@ -1,6 +1,6 @@
 /*
  *  myAttractor.h
- *  ofPortfolio
+ *  ofRaspPiPortfolio
  *
  *  Created by Thomas Van Ta on 13/04/13.
  *  Copyright 2013 __ThomasVanTa__. All rights reserved.

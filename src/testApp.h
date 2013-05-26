@@ -4,6 +4,7 @@
 #include "myParticle.h"
 #include "myAttractor.h"
 #include "ofxDelaunay.h"
+#include "mySpring.h"
 
 class testApp : public ofBaseApp{
 
@@ -22,7 +23,7 @@ class testApp : public ofBaseApp{
 		void dragEvent(ofDragInfo dragInfo);
 		void gotMessage(ofMessage msg);
 	
-		void drawFboTest();
+		void drawFbo();
 	
 	ofColor color1;
 	ofColor color2;
@@ -35,7 +36,9 @@ class testApp : public ofBaseApp{
 	ofColor backColor;
 		
 	//array of pointers of particles
-	myParticle** particles;
+	//myParticle** particles;
+	vector<myParticle*> particles;
+	vector<myParticle*> particlesBuffer;
 	int nParticles;
 	
 	ofVec2f pos;
@@ -55,14 +58,14 @@ class testApp : public ofBaseApp{
 	bool attract;
 	ofColor attractColor;
 	int strength;
-	bool trails;
-	bool oneTrail;
+	bool trails, trailsSpeed, oneTrail;
 	
 	//32 bits red, 32 bits green, 32 bits blue, from 0 to 1 in 'infinite' steps	
-	ofFbo rgbaFboFloat; // with alpha
+	ofFbo myFbo; // with alpha
 	int fadeAmnt;
 	
 	ofxDelaunay *triangulator;
+	ofxDelaunay *triangulatorSpeed;
 	
 	
 };
