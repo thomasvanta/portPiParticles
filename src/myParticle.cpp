@@ -17,6 +17,8 @@ myParticle::myParticle(ofVec2f _pos, float _m)
 	diam = mass*30;
 	vel.set (0,0);
 	acc.set (0,0);
+	angle = ofRandomf()*TWO_PI; //takes a random number between -2*Pi and 2*Pi
+    age = 0;
 }
 
 void myParticle::update()
@@ -24,9 +26,9 @@ void myParticle::update()
 	vel += acc;
 	pos += vel;	
 	edges();
-	
 	//reinitialization of the forces
 	acc *= 0;
+	age++;
 	
 }
 
@@ -45,33 +47,55 @@ void myParticle::applyForce(ofVec2f _f)
 	//ejecucion de la fuerza
 	acc += force;
 	//limit for not getting crazy velocity
-	acc.limit(3);
+	acc.limit(2);
 }
 
-bool myParticle::isAffected(bool a, int radius)
+ofVec2f myParticle::attraction(myAttractor* a, int strength)
 {
-	ofVec2f dir = pos - ofPoint(ofGetMouseX(),ofGetMouseY());//vector entre 'attractor' y particula
-	float d = dir.length();			//distancia entre ellos
-	if (d < radius && a) {			//si la distancia es menor que el radio y está activada
-		return true;				//retornar verdadero
-	} else {
-		return false;
-	}
+	//Gravitational attraction
+	ofVec2f dir = a->pos - pos;	//direction from attractor to particle
+	float d = dir.length();		//distance from attractor to particle
+	dir.normalize();
+	d = ofClamp(d, 50, 600);	//range
+	//float force = (strength * mass * p->mass) / (d*(d/2));	//gravitational force
+	float force = (strength * mass * a->mass) / (d*d);	//gravitational force
+	dir *= force;				//direction * magnitude = vector
+	return dir;
+}
+
+void myParticle::randomize()
+{
+	angle += ofSignedNoise(pos.x, pos.y)*TWO_PI;
+    vel.rotate(angle);
+    oldPos = pos;
 	
+}
+
+void myParticle::drawRandom()
+{
+	ofSetColor(col,ofMap(age,0,20,255,0,true));
+    ofLine(oldPos,pos);
+	
+}
+
+bool myParticle::isDead(int threshold)
+{
+	return (age >= threshold);	
+}
+
+bool myParticle::isAffectedBy(myAttractor* a, bool b, int radius)
+{
+	ofVec2f dir = pos - a->pos;	//vector from attractor to particle
+	float d = dir.length();			//distancia entre ellos
+	return (d < radius && b);		//si la distancia es menor que el radio y está activada se verifica	
 }
 
 bool myParticle::isMoving(float _speed)
 {
-	if (vel.length() > _speed) {
-		return true;
-	} else {
-		return false;
-	}
-
-	
+	return (vel.length() > _speed);	
 }
 
-//esta función mantiene las partículas en la ventana
+//esta función mantiene las partículas dentro de la ventana
 void myParticle::edges()
 {
 	if (pos.x > (ofGetWidth()-(diam/2))) {

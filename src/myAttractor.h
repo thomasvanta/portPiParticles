@@ -12,7 +12,6 @@
 						// than once which would confuse the compiler
 
 #include "ofMain.h"
-#include "myParticle.h"
 
 class myAttractor {
 	
@@ -23,13 +22,9 @@ public:
 	float g;
 	ofVec2f pos;
 	
-	bool action;
-	
 	//methods
-	void update(ofVec2f, bool);
+	void update(ofVec2f);
 	void display(float, ofColor);
-	
-	ofVec2f attract(myParticle* , int);
 	
 	//constructor
 	myAttractor();

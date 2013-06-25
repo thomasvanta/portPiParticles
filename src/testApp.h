@@ -25,15 +25,9 @@ class testApp : public ofBaseApp{
 	
 		void drawFbo();
 	
-	ofColor color1;
-	ofColor color2;
-	ofColor color3;
-	ofColor color4;
-	ofColor color5;
+	ofColor color1, color2, color3, color4, color5;
 
-	ofColor bgColor;
-	ofColor partColor;
-	ofColor backColor;
+	ofColor bgColor, partColor, backColor;
 		
 	//array of pointers of particles
 	//myParticle** particles;
@@ -45,13 +39,12 @@ class testApp : public ofBaseApp{
 	
 	//forces
 	float windX;
-	float gX;
-	float gY;
+	float gX, gY;	//gravity components
 	ofVec2f wind;
 	ofVec2f gravity;
 	bool grav;
 	ofVec2f drag;
-	float c;
+	float c;		//drag coeficient
 	
 	//Attr
 	myAttractor *attractor;

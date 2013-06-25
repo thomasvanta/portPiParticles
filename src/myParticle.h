@@ -12,18 +12,16 @@
 					// than once which would confuse the compiler
 
 #include "ofMain.h"
+#include "myAttractor.h"
 
 class myParticle {
 	
 public:
 	
 	//properties
-	ofVec2f pos;
-	ofVec2f vel;
-	ofVec2f acc;
-	ofVec2f force;
-	float mass;
-	float diam;
+	ofVec2f pos, vel, acc, force, oldPos;
+	float mass, diam, angle;
+	int age;
 	ofColor col;
 	
 	//methods
@@ -33,10 +31,16 @@ public:
 	void applyForce(ofVec2f);
 	void edges();
 	
-	bool isAffected(bool, int);
+	ofVec2f attraction(myAttractor*, int);
+	
+	void randomize();
+	void drawRandom();
+	
+	bool isDead(int);
+	bool isAffectedBy(myAttractor*, bool, int);
 	bool isMoving(float);
 	
-	//constructor
+	//constructor, needs a position and a mass
 	myParticle(ofVec2f, float);
 	
 	

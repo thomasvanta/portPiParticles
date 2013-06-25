@@ -13,6 +13,7 @@ void testApp::setup(){
 	ofEnableAlphaBlending();
 	ofSetFrameRate(60);
 	ofSetCircleResolution(128);
+	ofSetWindowTitle("Thomas Van Ta");
 	
 	//my colors from colourlovers.com
 	color1 = (33, 20, 38);
@@ -27,7 +28,7 @@ void testApp::setup(){
 	ofBackground(backColor);
 	
 	//set the number of particles
-	nParticles = 3;
+	nParticles = 1;
 	
 	//forces variables
 	windX = 0.0;
@@ -58,7 +59,7 @@ void testApp::setup(){
 	//trails
 	trails = false;
 	trailsSpeed = false;
-	oneTrail = true;
+	oneTrail = false;
 	
 	//myFbo.allocate(ofGetWidth, ofGetHeight, GL_RGBA32F_ARB);
 	// with alpha, 32 bits red, 32 bits green, 32 bits blue, 32 bits alpha, from 0 to 1 in 'infinite' steps
@@ -91,7 +92,7 @@ void testApp::update(){
 	triangulatorSpeed->reset();
 	
 	for (int i = 0; i < particles.size(); i++) {
-
+		
 		drag.set(particles[i]->vel.getNormalized());//copy of the velocity vectors direction
 		float speed = particles[i]->vel.length();	//get the vectors length in order to:
 		drag.scale(c*speed);						//multiply it by coeficient
@@ -102,13 +103,18 @@ void testApp::update(){
 			particles[i]->applyForce(gravity);		//apply gravity if selected
 		}
 		
-		ofVec2f attForce = attractor->attract(particles[i], strength);//calculate attractor
-		particles[i]->applyForce(attForce);			//apply attractor
+		if (attract) {
+			ofVec2f attForce = particles[i]->attraction(attractor, strength);//calculate attractor
+			particles[i]->applyForce(attForce);			//apply attractor
+		}
+		
 		//particles affected by Attractor range
-		/*if (particles[i]->isAffected(attract, 100)) {
+		/*if (particles[i]->isAffectedBy(attractor, attract, 100)) {
 		 particles[i]->applyForce(wind);
 		 }*/
-		particles[i]->update();
+
+		particles[i]->update();		
+		//particles[i]->randomize();
 		
 		triangulator->addPoint(particles[i]->pos);
 		
@@ -125,7 +131,7 @@ void testApp::update(){
 		triangulatorSpeed->addPoint(particles[i]->pos);
 	}
 	
-	attractor->update(ofPoint(ofGetMouseX(),ofGetMouseY()), attract);
+	attractor->update(ofPoint(ofGetMouseX(),ofGetMouseY()));
 	
 	triangulator->triangulate();
 	//don't triangulate the buffer till there is a minimum of particles in there
@@ -150,6 +156,7 @@ void testApp::draw(){
 	//Draw methods for the particles
 	for (int i = 0; i < particles.size(); i++) {
 		particles[i]->display(partColor);
+		//particles[i]->drawRandom();
 	}
 	
 	if (trailsSpeed) {
@@ -162,6 +169,8 @@ void testApp::draw(){
 	//attractor->display(ofNoise(ofRandom(40))*40, attractColor);
 	//attractor->display(ofRandom(40), attractColor);
 	attractor->display(70, attractColor);
+
+	
 	
 	particlesBuffer.clear();	//reset the buffer every frame
 
@@ -183,22 +192,26 @@ void testApp::keyPressed(int key){
 				partColor = color5;
 				backColor = color1;
 				break;
+			case '3':
+				partColor = ofColor(255);
+				backColor = ofColor(0);
+				break;
 			case 'g':
 				grav = !grav;
 				break;
-			case '3':
+			case '5':
 				strength = 3;
 				break;
-			case '4':
+			case '6':
 				strength = 10;
 				break;
-			case '5':
+			case '7':
 				strength = 50;
 				break;
-			case '6':
+			case '8':
 				strength = 100;
 				break;
-			case '7':
+			case '9':
 				strength = 500;
 				break;
 			case 'o':
@@ -225,13 +238,19 @@ void testApp::keyPressed(int key){
 				oneTrail = !oneTrail;
 				break;
 			case 'm':
-				//Add a big particle
-				particles.push_back( new myParticle(ofPoint(ofGetWidth()/2,ofGetHeight()/2),4) );
+				if (particles.size() > 0) {
+					particles.pop_back();
+				}
 				break;
 			case 'n':
 				//Add new particles
 				particles.push_back( new myParticle(ofPoint(ofRandom(ofGetWidth()-40),ofRandom(ofGetHeight()-40)),ofRandom(0.5,1)) );
 				break;
+			case ',':
+				//Add a big particle
+				particles.push_back( new myParticle(ofPoint(ofGetWidth()/2,ofGetHeight()/2),4) );
+				break;
+
 		}
 
 }
@@ -308,23 +327,33 @@ void testApp::drawFbo(){
 	ofRect(0,0,ofGetWidth(),ofGetHeight());
 	
 	//2 - Draw graphics --------------------------------------
-	
-	ofSetColor(color5);
 	ofNoFill();
-	
+	ofSetColor(color5);
 	//draw the mesh of triangles
 	if (trails) {
+		ofPushStyle();
+		ofSetColor(color5);
+		ofSetLineWidth(1.2);
 		triangulator->draw();
+		ofPopStyle();
 	}
 	
 	//draw the mesh of triangles for the particles in movement
 	if (trailsSpeed) {
+		ofPushStyle();
+		ofSetColor(color4);
+		ofSetLineWidth(1.4);
 		triangulatorSpeed->draw();
+		ofPopStyle();
 	}
 	
 	//connect the two first particles in the vector
 	if (oneTrail) {
+		ofPushStyle();
+		ofSetColor(partColor);
+		ofSetLineWidth(1.3);
 		ofLine(particles[0]->pos.x, particles[0]->pos.y, particles[1]->pos.x, particles[1]->pos.y);
+		ofPopStyle();
 	}
 
 }
